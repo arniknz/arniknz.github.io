@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Визуализатор функций — Function Plotter</title>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@11.11.0/lib/browser/math.js"></script>
+<style>
+:root{
+  --bg:#0f172a; --panel:#1e293b; --panel2:#0b1220; --text:#e2e8f0; --muted:#94a3b8;
+  --border:#334155; --accent:#3b82f6; --input:#0f172a; --grid:#243349; --axis:#64748b;
+}
+[data-theme="light"]{
+  --bg:#f8fafc; --panel:#ffffff; --panel2:#f1f5f9; --text:#0f172a; --muted:#64748b;
+  --border:#e2e8f0; --accent:#2563eb; --input:#ffffff; --grid:#e2e8f0; --axis:#94a3b8;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:10}
+header h1{font-size:18px;margin:0}
+header p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+main{display:grid;grid-template-columns:360px 1fr;gap:14px;padding:14px;max-width:1280px;width:100%;margin:0 auto;flex:1}
+@media(max-width:860px){main{grid-template-columns:1fr} .canvas-wrap{order:-1}}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;height:fit-content}
+.modes{display:flex;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:4px;gap:4px}
+.modes button{flex:1;border:0;background:transparent;color:var(--muted);padding:8px 4px;border-radius:8px;cursor:pointer;font-size:13px}
+.modes button.active{background:var(--accent);color:#fff}
+.fn{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--panel2);display:flex;flex-direction:column;gap:8px}
+.fn-top{display:flex;align-items:center;gap:8px}
+.fn-top input[type=color]{width:32px;height:28px;border:none;background:none;padding:0;cursor:pointer}
+.fn-top input[type=text]{flex:1;min-width:0;background:var(--input);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px}
+.fn-top input[type=text]:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+.icon-btn{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:8px;width:30px;height:30px;cursor:pointer;flex-shrink:0}
+.fn-err{font-size:12px;color:#ef4444;min-height:0}
+.fn-err:empty{display:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+label.small{font-size:12px;color:var(--muted)}
+input.num{background:var(--input);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 8px;width:80px}
+button.primary{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;cursor:pointer}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets button{font-family:ui-monospace,monospace;font-size:12px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:5px 10px;cursor:pointer}
+.presets button:hover{border-color:var(--accent)}
+#params:empty{display:none}
+.param{display:grid;grid-template-columns:28px 1fr 70px;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+.param b{font-family:ui-monospace,monospace;text-align:center}
+.param output{font-size:12px;color:var(--muted);text-align:right}
+.param input[type=range]{width:100%;accent-color:var(--accent)}
+.param input[type=number]{width:70px;background:var(--input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px}
+.canvas-wrap{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:480px}
+#plot{width:100%;height:62vh;min-height:380px;border-radius:10px;background:var(--panel2);border:1px solid var(--border);touch-action:none;cursor:grab;display:block}
+#plot:active{cursor:grabbing}
+.hint{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:14px}
+kbd{background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:0 5px;font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>📈 Визуализатор функций</h1><p>y = f(x) · параметрические · полярные · math.js, Canvas</p></div>
+  <button class="ghost" id="themeBtn" title="Переключить тему">🌙 Тёмная</button>
+</header>
+<main>
+  <div class="panel">
+    <div class="modes" role="tablist">
+      <button data-mode="cartesian" class="active">y = f(x)</button>
+      <button data-mode="parametric">x(t), y(t)</button>
+      <button data-mode="polar">r(θ)</button>
+    </div>
+    <div class="row" id="tRangeRow" style="display:none">
+      <label class="small">t min <input class="num" id="tMin" type="number" value="-10" step="1"></label>
+      <label class="small">t max <input class="num" id="tMax" type="number" value="10" step="1"></label>
+    </div>
+    <div class="row" id="thetaRow" style="display:none">
+      <label class="small">θ max <input class="num" id="thetaMax" type="number" value="12.566" step="0.1"></label>
+      <label class="small"><input type="checkbox" id="thetaDeg"> градусы</label>
+    </div>
+    <div id="fnList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <button class="primary" id="addBtn">+ Добавить функцию</button>
+    <div>
+      <label class="small">Примеры (проверены):</label>
+      <div class="presets">
+        <button data-preset="sin(x)">sin(x)</button>
+        <button data-preset="tan(x)">tan(x)</button>
+        <button data-preset="1/x">1/x</button>
+        <button data-preset="x^2">x^2</button>
+        <button data-preset="sin(1/x)">sin(1/x)</button>
+        <button data-preset="a*sin(b*x)">a·sin(b·x)</button>
+      </div>
+    </div>
+    <div>
+      <label class="small">Параметры из формул (слайдеры появляются автоматически):</label>
+      <div id="params" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+    </div>
+    <div class="row">
+      <button class="ghost" id="resetView">⌂ Сбросить вид</button>
+      <button class="ghost" id="shareBtn">🔗 Копировать ссылку</button>
+    </div>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="plot"></canvas>
+    <div class="hint">
+      <span>🖱️ Колесо — зум · перетаскивание — сдвиг · на телефоне: 1 палец — сдвиг, 2 пальца — зум</span>
+      <span id="coords">x: 0, y: 0</span>
+    </div>
+  </div>
+</main>
+<footer>Один <kbd>index.html</kbd> + <kbd>math.js CDN</kbd>, без eval · разрывы tan(x), 1/x отсекаются без вертикальных линий</footer>
+
+<script>
+(function(){
+"use strict";
+const canvas=document.getElementById('plot'), ctx=canvas.getContext('2d');
+const fnList=document.getElementById('fnList'), paramsBox=document.getElementById('params');
+const coordsEl=document.getElementById('coords');
+const PALETTE=['#3b82f6','#ef4444','#22c55e','#f59e0b','#a855f7','#06b6d4','#ec4899','#14b8a6'];
+const VAR_BY_MODE={cartesian:'x',parametric:'t',polar:'theta'};
+const RESERVED=new Set(['x','t','theta','pi','e','E','phi','tau','true','false','null','i','Infinity','NaN']);
+let uid=1;
+const state={mode:'cartesian',functions:[],params:{},view:{cx:0,cy:0,scale:60},tMin:-10,tMax:10,thetaMax:Math.PI*4};
+
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function defaultView(){return{cx:0,cy:0,scale:60}}
+
+function makeFn(expr,color){return{id:uid++,color:color||PALETTE[(uid-2)%PALETTE.length],expr:expr||'',expr2:'sin(t)',visible:true,compiled:null,compiled2:null,error:''}}
+function varName(){return VAR_BY_MODE[state.mode]}
+
+function addFn(expr,expr2){
+  const f=makeFn(expr,PALETTE[(state.functions.length)%PALETTE.length]);
+  if(expr2!==undefined)f.expr2=expr2;
+  state.functions.push(f); renderFnList(); refreshParams(); scheduleDraw();
+}
+function compileAll(){
+  for(const f of state.functions){
+    f.error=''; f.compiled=null; f.compiled2=null;
+    try{
+      if(state.mode==='cartesian'){
+        if(!f.expr.trim())continue;
+        f.compiled=math.compile(f.expr);
+        f.compiled.evaluate(Object.assign({x:0},state.params)); // ранняя проверка синтаксиса
+      }else if(state.mode==='parametric'){
+        if(!f.expr.trim()||!f.expr2.trim())continue;
+        f.compiled=math.compile(f.expr);
+        f.compiled2=math.compile(f.expr2);
+        const s=Object.assign({t:0},state.params);
+        f.compiled.evaluate(s); f.compiled2.evaluate(s);
+      }else{
+        if(!f.expr.trim())continue;
+        f.compiled=math.compile(f.expr);
+        f.compiled.evaluate(Object.assign({theta:0},state.params));
+      }
+    }catch(e){ f.error='⚠ '+friendlyErr(e); }
+  }
+}
+function friendlyErr(e){
+  let m=String((e&&e.message)||e);
+  m=m.replace(/^.*Error:\s*/,'');
+  return m+' — проверьте скобки, используйте sin(x), sqrt(x), x^2, а не **.';
+}
+// --- автопоиск параметров через AST, без eval ---
+function detectParams(){
+  const found=new Set();
+  for(const f of state.functions){
+    for(const src of (state.mode==='parametric'?[f.expr,f.expr2]:[f.expr])){
+      if(!src||!src.trim())continue;
+      try{
+        const node=math.parse(src);
+        node.traverse((n, path, parent)=>{
+          // имя функции (sin в sin(x)) — это тоже SymbolNode, но parent.fn === n; его пропускаем.
+          // Аргументы (c в cos(c)) имеют parent FunctionNode, но parent.fn !== n — это параметры.
+          const isFnName = parent && parent.isFunctionNode && parent.fn === n;
+          if(n&&n.isSymbolNode && !isFnName && !RESERVED.has(n.name) && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n.name)){
+            // отбрасываем имена функций типа sin: они FunctionNode, не SymbolNode — сюда не попадут
+            found.add(n.name);
+          }
+        });
+      }catch(e){/* синтаксическая ошибка — покажем в строке функции */}
+    }
+  }
+  // удалить исчезнувшие, добавить новые (дефолт 1)
+  for(const k of Object.keys(state.params)) if(!found.has(k)) delete state.params[k];
+  for(const k of found) if(!(k in state.params)) state.params[k]=1;
+  return [...found].sort();
+}
+function renderParams(){
+  const names=detectParams();
+  paramsBox.innerHTML='';
+  if(!names.length){paramsBox.innerHTML='<span class="small" style="font-size:12px;color:var(--muted)">Пока нет параметров. Попробуйте <b>a*sin(b*x)</b>.</span>';return;}
+  for(const n of names){
+    const v=state.params[n];
+    const d=document.createElement('div');d.className='param';
+    d.innerHTML=`<b>${n}</b>`;
+    const r=document.createElement('input');r.type='range';r.min=-10;r.max=10;r.step=0.05;r.value=v;
+    const num=document.createElement('input');num.type='number';num.step=0.1;num.value=v;
+    const out=document.createElement('output');out.textContent=Number(v).toFixed(2);
+    r.oninput=()=>{state.params[n]=parseFloat(r.value);num.value=r.value;out.textContent=Number(r.value).toFixed(2);scheduleDraw();};
+    num.oninput=()=>{const x=parseFloat(num.value);if(!isFinite(x))return;state.params[n]=x;out.textContent=x.toFixed(2);
+      if(x>=-10&&x<=10)r.value=x;scheduleDraw();};
+    const wrap=document.createElement('div');wrap.style.display='flex';wrap.style.gap='6px';wrap.style.alignItems='center';
+    wrap.append(num);
+    d.append(r,wrap);paramsBox.append(d);
+  }
+}
+function renderFnList(){
+  fnList.innerHTML='';
+  state.functions.forEach((f,idx)=>{
+    const box=document.createElement('div');box.className='fn';
+    const top=document.createElement('div');top.className='fn-top';
+    const c=document.createElement('input');c.type='color';c.value=f.color;
+    c.oninput=()=>{f.color=c.value;scheduleDraw();};
+    const eye=document.createElement('button');eye.className='icon-btn';eye.textContent=f.visible?'👁':'🚫';eye.title='Показать/скрыть';
+    eye.onclick=()=>{f.visible=!f.visible;renderFnList();scheduleDraw();};
+    const del=document.createElement('button');del.className='icon-btn';del.textContent='✕';
+    del.onclick=()=>{state.functions.splice(idx,1);renderFnList();refreshParams();scheduleDraw();};
+    top.append(c);
+    const v=varName();
+    if(state.mode==='parametric'){
+      const i1=document.createElement('input');i1.type='text';i1.placeholder='x(t), напр. cos(t)';i1.value=f.expr;
+      const i2=document.createElement('input');i2.type='text';i2.placeholder='y(t), напр. sin(2t)';i2.value=f.expr2;
+      i1.oninput=()=>{f.expr=i1.value;refreshParams();scheduleDraw();};
+      i2.oninput=()=>{f.expr2=i2.value;refreshParams();scheduleDraw();};
+      top.append(i1,eye,del);
+      const row2=document.createElement('div');row2.className='fn-top';row2.append(i2);
+      const lab=document.createElement('div');lab.className='small';lab.style.cssText='font-size:11px;color:var(--muted)';lab.textContent=`f${idx+1}: x(t), y(t) · t ∈ [${state.tMin}, ${state.tMax}]`;
+      const err=document.createElement('div');err.className='fn-err';err.id='err-'+f.id;
+      box.append(lab,top,row2,err);
+    }else{
+      const inp=document.createElement('input');inp.type='text';
+      inp.placeholder=state.mode==='cartesian'?'sin(x)/x':'cos(3*theta)';
+      inp.value=f.expr;
+      inp.setAttribute('aria-label','Формула');
+      inp.oninput=()=>{f.expr=inp.value;refreshParams();scheduleDraw();};
+      top.append(inp,eye,del);
+      const lab=document.createElement('div');lab.style.cssText='font-size:11px;color:var(--muted)';
+      lab.textContent=state.mode==='cartesian'?`f${idx+1}(x)`:`r(θ), функция ${idx+1}`;
+      const err=document.createElement('div');err.className='fn-err';err.id='err-'+f.id;
+      box.append(lab,top,err);
+    }
+    if(!f.visible)box.style.opacity='0.55';
+    fnList.append(box);
+  });
+}
+function refreshParams(){compileAll();renderParams();updateErrors();}
+function updateErrors(){
+  for(const f of state.functions){
+    const el=document.getElementById('err-'+f.id);
+    if(el)el.textContent=f.error||'';
+  }
+}
+// ---------- Canvas ----------
+function resize(){
+  const r=canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  canvas.width=Math.max(300,r.width*dpr);canvas.height=Math.max(300,r.height*dpr);
+  scheduleDraw();
+}
+function niceStep(pxPerUnit){
+  const target=70; // px между линиями
+  const raw=target/pxPerUnit;
+  const mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  for(const m of [1,2,5,10]) if(m*mag>=raw) return m*mag;
+  return 10*mag;
+}
+function draw(){
+  compileAll();updateErrors();
+  const W=canvas.width,H=canvas.height;
+  const {cx,cy,scale}=state.view;
+  const ox=W/2-cx*scale, oy=H/2+cy*scale;
+  ctx.clearRect(0,0,W,H);
+  const dpr=window.devicePixelRatio||1;
+  // сетка
+  const step=niceStep(scale);
+  const x0=(0-ox)/scale, x1=(W-ox)/scale, y1=(oy-0)/scale, y0=(oy-H)/scale;
+  ctx.lineWidth=1;
+  ctx.font=`${11*dpr}px system-ui`;ctx.textBaseline='top';
+  const startX=Math.floor(x0/step)*step;
+  for(let x=startX;x<=x1;x+=step){
+    const px=ox+x*scale;
+    const isAxis=Math.abs(x)<step*1e-9;
+    ctx.strokeStyle=isAxis?cssVar('--axis'):cssVar('--grid');
+    ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
+    if(!isAxis){ctx.fillStyle=cssVar('--muted');ctx.fillText(fmt(x),px+4*dpr,oy+4*dpr);}
+  }
+  const startY=Math.floor(y0/step)*step;
+  for(let y=startY;y<=y1;y+=step){
+    const py=oy-y*scale;
+    const isAxis=Math.abs(y)<step*1e-9;
+    ctx.strokeStyle=isAxis?cssVar('--axis'):cssVar('--grid');
+    ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(W,py);ctx.stroke();
+    if(!isAxis){ctx.fillStyle=cssVar('--muted');ctx.fillText(fmt(y),ox+4*dpr,py+3*dpr);}
+  }
+  // ноль
+  ctx.fillStyle=cssVar('--muted');ctx.fillText('0',ox+4*dpr,oy+4*dpr);
+  // графики
+  const MAXJUMP=H*0.9; // разрыв: вертикальный скачок больше ~90% высоты -> разрыв линии
+  for(const f of state.functions){
+    if(!f.visible||f.error||!f.compiled)continue;
+    ctx.strokeStyle=f.color;ctx.lineWidth=2*dpr;ctx.lineJoin='round';ctx.lineCap='round';
+    ctx.beginPath();
+    let pen=false, prevY=null, prevPX=null, prevPY=null;
+    const scope=Object.assign({},state.params);
+    const emit=(mx,my)=>{
+      if(!isFinite(mx)||!isFinite(my)||Math.abs(my)>1e6||Math.abs(mx)>1e6){pen=false;prevY=null;return;}
+      const px=ox+mx*scale, py=oy-my*scale;
+      if(!isFinite(px)||!isFinite(py)){pen=false;return;}
+      if(pen&&prevY!==null){
+        // детект разрыва: резкий скачок по y при малом шаге по x
+        if(Math.abs(py-prevPY)>MAXJUMP && Math.abs(px-prevPX)<40*dpr){pen=false;}
+      }
+      if(!pen){ctx.moveTo(px,py);pen=true;}
+      else ctx.lineTo(px,py);
+      prevY=my;prevPX=px;prevPY=py;
+    };
+    try{
+      if(state.mode==='cartesian'){
+        const N=Math.ceil(W/ (dpr) *1.5); // ~1.5 выборки на css-пиксель — честно рисует sin(1/x)
+        for(let i=0;i<=N;i++){
+          const px=i/N*W;
+          const mx=(px-ox)/scale;
+          let my;
+          try{my=f.compiled.evaluate(Object.assign(scope,{x:mx}));my=Number(my);}
+          catch(e){pen=false;prevY=null;continue;}
+          if(typeof my!=='number'||!isFinite(my)){pen=false;prevY=null;continue;}
+          emit(mx,my);
+        }
+      }else if(state.mode==='parametric'){
+        const N=2500;
+        for(let i=0;i<=N;i++){
+          const t=state.tMin+(state.tMax-state.tMin)*i/N;
+          let mx,my;
+          try{
+            mx=Number(f.compiled.evaluate(Object.assign(scope,{t})));
+            my=Number(f.compiled2.evaluate(Object.assign(scope,{t})));
+          }catch(e){pen=false;continue;}
+          emit(mx,my);
+        }
+      }else{
+        const N=2500, deg=document.getElementById('thetaDeg').checked;
+        const tMax=parseFloat(document.getElementById('thetaMax').value)||Math.PI*2;
+        for(let i=0;i<=N;i++){
+          const th=tMax*i/N;
+          const arg=deg?th*Math.PI/180:th;
+          let r;
+          try{r=Number(f.compiled.evaluate(Object.assign(scope,{theta:arg})));}
+          catch(e){pen=false;continue;}
+          if(!isFinite(r)||Math.abs(r)>1e6){pen=false;continue;}
+          emit(r*Math.cos(arg),r*Math.sin(arg));
+        }
+      }
+    }catch(e){f.error='⚠ '+friendlyErr(e);}
+    ctx.stroke();
+  }
+}
+function fmt(n){
+  const a=Math.abs(n);
+  if(a!==0&&(a>=10000||a<0.001))return n.toExponential(1);
+  return String(Math.round(n*1000)/1000);
+}
+let raf=0;
+function scheduleDraw(){cancelAnimationFrame(raf);raf=requestAnimationFrame(draw);}
+// ---------- взаимодействие ----------
+(function bind(){
+  let drag=null,pinch0=null;
+  const toMath=(cx,cy)=>({x:(cx* (canvas.width/canvas.getBoundingClientRect().width)- (canvas.width/2-state.view.cx*state.view.scale))/state.view.scale,
+                          y:((canvas.height/2+state.view.cy*state.view.scale)-cy*(canvas.height/canvas.getBoundingClientRect().height))/state.view.scale});
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const dpr=canvas.width/r.width;
+    const px=mx*dpr, py=my*dpr;
+    const {cx,cy,scale}=state.view;
+    const ox=canvas.width/2-cx*scale, oy=canvas.height/2+cy*scale;
+    const wx=(px-ox)/scale, wy=(oy-py)/scale;
+    const k=Math.exp(-e.deltaY*0.0015);
+    const ns=Math.min(5000,Math.max(2,scale*k));
+    state.view.scale=ns;
+    state.view.cx=(canvas.width/2-(px-wx*ns))/ns;
+    state.view.cy=((py+wy*ns)-canvas.height/2)/ns;
+    scheduleDraw();
+  },{passive:false});
+  canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,cx:state.view.cx,cy:state.view.cy};});
+  canvas.addEventListener('pointermove',e=>{
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left,my=e.clientY-r.top;
+    const dpr=canvas.width/r.width;
+    const wx=(mx*dpr-(canvas.width/2-state.view.cx*state.view.scale))/state.view.scale;
+    const wy=((canvas.height/2+state.view.cy*state.view.scale)-my*dpr)/state.view.scale;
+    coordsEl.textContent=`x: ${fmt(wx)}, y: ${fmt(wy)}`;
+    if(drag){
+      const dx=(e.clientX-drag.x)*dpr, dy=(e.clientY-drag.y)*dpr;
+      state.view.cx=drag.cx-dx/state.view.scale;
+      state.view.cy=drag.cy+dy/state.view.scale;
+      scheduleDraw();
+    }
+  });
+  window.addEventListener('pointerup',()=>drag=null);
+  canvas.addEventListener('touchmove',e=>{
+    if(e.touches.length===2){
+      e.preventDefault();
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      if(pinch0)state.view.scale=Math.min(5000,Math.max(2,state.view.scale*d/pinch0));
+      pinch0=d;scheduleDraw();
+    }
+  },{passive:false});
+  canvas.addEventListener('touchend',()=>pinch0=null);
+})();
+// ---------- UI ----------
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.modes button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');state.mode=b.dataset.mode;
+  document.getElementById('tRangeRow').style.display=state.mode==='parametric'?'flex':'none';
+  document.getElementById('thetaRow').style.display=state.mode==='polar'?'flex':'none';
+  renderFnList();refreshParams();scheduleDraw();
+});
+document.getElementById('addBtn').onclick=()=>addFn('');
+document.getElementById('resetView').onclick=()=>{state.view=defaultView();scheduleDraw();};
+document.getElementById('tMin').oninput=e=>{state.tMin=parseFloat(e.target.value)||0;scheduleDraw();};
+document.getElementById('tMax').oninput=e=>{state.tMax=parseFloat(e.target.value)||10;scheduleDraw();};
+document.getElementById('thetaMax').oninput=scheduleDraw;
+document.getElementById('thetaDeg').onchange=scheduleDraw;
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{
+  addFn(b.dataset.preset); 
+});
+document.getElementById('shareBtn').onclick=async()=>{
+  const data={mode:state.mode,fn:state.functions.map(f=>[f.expr,f.expr2,f.color]),p:state.params,v:state.view};
+  const url=location.origin+location.pathname+'#'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  try{await navigator.clipboard.writeText(url);alert('Ссылка скопирована!');}catch(e){prompt('Скопируйте ссылку:',url);}
+};
+// тема
+const themeBtn=document.getElementById('themeBtn');
+function setTheme(t){document.documentElement.dataset.theme=t;localStorage.setItem('theme',t);themeBtn.textContent=t==='dark'?'🌙 Тёмная':'☀️ Светлая';scheduleDraw();}
+themeBtn.onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+setTheme(localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
+// init из hash или дефолт
+(function init(){
+  let restored=false;
+  if(location.hash.length>1){
+    try{
+      const d=JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1)))));
+      state.mode=d.mode||'cartesian';state.params=d.p||{};state.view=d.v||defaultView();
+      (d.fn||[]).forEach(([a,b2,c])=>{const f=makeFn(a,c);f.expr2=b2||'sin(t)';state.functions.push(f);});
+      restored=true;
+      document.querySelectorAll('.modes button').forEach(x=>x.classList.toggle('active',x.dataset.mode===state.mode));
+      document.getElementById('tRangeRow').style.display=state.mode==='parametric'?'flex':'none';
+      document.getElementById('thetaRow').style.display=state.mode==='polar'?'flex':'none';
+    }catch(e){}
+  }
+  if(!restored){ state.functions.push(Object.assign(makeFn('sin(x)/x'),{})); }
+  renderFnList();refreshParams();
+  window.addEventListener('resize',resize);
+  resize();
+})();
+})();
+</script>
+</body>
+</html>
