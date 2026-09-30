@@ -1,84 +1,183 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Визуализатор функций — Function Plotter</title>
+<title>PLOT-O-VISION 3000 — pixel function TV</title>
 <script src="https://cdn.jsdelivr.net/npm/mathjs@11.11.0/lib/browser/math.js"></script>
 <style>
 :root{
-  --bg:#0f172a; --panel:#1e293b; --panel2:#0b1220; --text:#e2e8f0; --muted:#94a3b8;
-  --border:#334155; --accent:#3b82f6; --input:#0f172a; --grid:#243349; --axis:#64748b;
+  --bg:#c4b586; --panel:#e2d5a8; --panel2:#f4ecd0; --input:#fbf6df;
+  --ink:#2b2413; --muted:#6f6647; --accent:#b35400; --red:#b3331f;
+  --grid:#cfc191; --axis:#8a8058; --err:#a32a1a;
+  --wood1:#7a5732; --wood2:#5a3f22; --bezel:#241c12; --cream:#efe3ba;
 }
-[data-theme="light"]{
-  --bg:#f8fafc; --panel:#ffffff; --panel2:#f1f5f9; --text:#0f172a; --muted:#64748b;
-  --border:#e2e8f0; --accent:#2563eb; --input:#ffffff; --grid:#e2e8f0; --axis:#94a3b8;
+*{box-sizing:border-box;}
+body{
+  margin:0; color:var(--ink);
+  font-family:"Courier New",ui-monospace,Menlo,Consolas,monospace;
+  font-size:14px; min-height:100vh; display:flex; flex-direction:column;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(255,250,230,.5), transparent 50%),
+    radial-gradient(ellipse at 85% 90%, rgba(120,90,40,.25), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.015) 0 2px, transparent 2px 5px),
+    var(--bg);
 }
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:10}
-header h1{font-size:18px;margin:0}
-header p{margin:2px 0 0;font-size:12px;color:var(--muted)}
-main{display:grid;grid-template-columns:360px 1fr;gap:14px;padding:14px;max-width:1280px;width:100%;margin:0 auto;flex:1}
-@media(max-width:860px){main{grid-template-columns:1fr} .canvas-wrap{order:-1}}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px;height:fit-content}
-.modes{display:flex;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:4px;gap:4px}
-.modes button{flex:1;border:0;background:transparent;color:var(--muted);padding:8px 4px;border-radius:8px;cursor:pointer;font-size:13px}
-.modes button.active{background:var(--accent);color:#fff}
-.fn{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--panel2);display:flex;flex-direction:column;gap:8px}
-.fn-top{display:flex;align-items:center;gap:8px}
-.fn-top input[type=color]{width:32px;height:28px;border:none;background:none;padding:0;cursor:pointer}
-.fn-top input[type=text]{flex:1;min-width:0;background:var(--input);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px}
-.fn-top input[type=text]:focus{outline:2px solid var(--accent);border-color:var(--accent)}
-.icon-btn{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:8px;width:30px;height:30px;cursor:pointer;flex-shrink:0}
-.fn-err{font-size:12px;color:#ef4444;min-height:0}
-.fn-err:empty{display:none}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-label.small{font-size:12px;color:var(--muted)}
-input.num{background:var(--input);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 8px;width:80px}
-button.primary{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px;cursor:pointer;font-weight:600}
-button.ghost{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px 10px;cursor:pointer}
-.presets{display:flex;flex-wrap:wrap;gap:6px}
-.presets button{font-family:ui-monospace,monospace;font-size:12px;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:20px;padding:5px 10px;cursor:pointer}
-.presets button:hover{border-color:var(--accent)}
-#params:empty{display:none}
-.param{display:grid;grid-template-columns:28px 1fr 70px;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
-.param b{font-family:ui-monospace,monospace;text-align:center}
-.param output{font-size:12px;color:var(--muted);text-align:right}
-.param input[type=range]{width:100%;accent-color:var(--accent)}
-.param input[type=number]{width:70px;background:var(--input);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px}
-.canvas-wrap{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:480px}
-#plot{width:100%;height:62vh;min-height:380px;border-radius:10px;background:var(--panel2);border:1px solid var(--border);touch-action:none;cursor:grab;display:block}
-#plot:active{cursor:grabbing}
-.hint{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-footer{text-align:center;color:var(--muted);font-size:12px;padding:14px}
-kbd{background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:0 5px;font-size:11px}
+.topbar{
+  display:flex; align-items:center; gap:10px; padding:10px 16px;
+  background:var(--panel); border-bottom:3px solid var(--ink);
+}
+.topbar .logo{
+  font-weight:bold; letter-spacing:2px; background:var(--ink); color:var(--cream);
+  padding:3px 10px; transform:rotate(-1deg);
+}
+.topbar span{color:var(--muted); font-size:12px;}
+main{
+  display:grid; grid-template-columns:330px 1fr; gap:16px;
+  padding:14px 16px; max-width:1200px; width:100%; margin:0 auto; flex:1;
+}
+@media(max-width:900px){main{grid-template-columns:1fr;} .tv-zone{order:-1;}}
+.card{
+  background:var(--panel); border:3px solid var(--ink);
+  box-shadow:4px 4px 0 rgba(43,36,19,.3); padding:12px; margin-bottom:14px;
+}
+.card h2{margin:0 0 8px; font-size:12px; letter-spacing:2px; color:var(--muted); font-weight:normal;}
+.card h2 .stamp{
+  display:inline-block; border:2px solid var(--red); color:var(--red); font-weight:bold;
+  padding:0 6px; transform:rotate(-2deg); letter-spacing:2px;
+}
+/* manual */
+details.manual{border:2px dashed var(--ink); background:var(--panel2); padding:8px 10px;}
+details.manual summary{cursor:pointer; font-weight:bold; font-size:13px;}
+details.manual ol{margin:8px 0 4px; padding-left:20px; font-size:12px; line-height:1.5;}
+details.manual li{margin-bottom:8px;}
+details.manual button{font:inherit; font-size:11px; font-weight:bold; cursor:pointer;
+  background:var(--cream); border:2px solid var(--ink); padding:2px 8px; margin:2px 4px 2px 0;}
+details.manual button:hover{background:var(--accent); color:#fff; border-color:var(--accent);}
+/* modes = TV channels */
+.modes{display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;}
+.modes button{font:inherit; font-size:12px; font-weight:bold; cursor:pointer; padding:8px 2px;
+  background:var(--panel2); color:var(--muted); border:3px solid var(--ink);}
+.modes button small{display:block; font-weight:normal; font-size:10px;}
+.modes button.active{background:var(--ink); color:var(--cream);}
+.presets{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;}
+.presets button{font:inherit; font-size:12px; cursor:pointer; padding:5px 9px;
+  background:var(--panel2); color:var(--ink); border:2px solid var(--ink);}
+.presets button:hover{border-color:var(--accent); color:var(--accent);}
+#fnList{display:flex; flex-direction:column; gap:8px;}
+.fn{border:2px solid var(--ink); background:var(--panel2); padding:7px;}
+.fn-top{display:flex; gap:6px;}
+.fn-top input[type=color]{width:34px; height:34px; border:2px solid var(--ink); background:var(--panel2); padding:2px; cursor:pointer; flex-shrink:0;}
+.fn-top input[type=text]{flex:1; min-width:0; font:inherit; font-size:15px; font-weight:bold;
+  background:var(--input); color:var(--ink); border:2px solid var(--ink); padding:6px 8px;}
+.fn-top input[type=text]:focus{outline:none; border-color:var(--accent);}
+.fn-err{font-size:12px; color:var(--err); margin-top:4px;}
+.fn-err:empty{display:none;}
+.px-btn{font:inherit; font-size:12px; font-weight:bold; cursor:pointer;
+  background:var(--panel2); color:var(--ink); border:2px solid var(--ink); padding:6px 10px;}
+.px-btn:hover{border-color:var(--accent); color:var(--accent);}
+.px-btn:active{transform:translate(1px,1px);}
+.px-btn.primary{background:var(--ink); color:var(--cream); border-color:var(--ink); width:100%; padding:10px;}
+.px-btn.primary:hover{background:var(--accent); border-color:var(--accent); color:#fff;}
+.icon-btn{font:inherit; font-size:12px; border:2px solid var(--ink); background:var(--panel); color:var(--ink); min-width:34px; cursor:pointer; flex-shrink:0;}
+.param{border:2px solid var(--ink); background:var(--panel2); padding:6px 8px; margin-top:8px;}
+.param-head{display:flex; justify-content:space-between; font-size:13px; font-weight:bold;}
+.param-head output{color:var(--accent);}
+.param input[type=range]{width:100%; accent-color:var(--accent);}
+input.num{font:inherit; background:var(--input); color:var(--ink); border:2px solid var(--ink); padding:4px 6px; width:80px; font-size:12px;}
+.row{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;}
+.hint{font-size:11px; color:var(--muted); line-height:1.6; margin-top:10px;}
+.hint code{border:1px solid var(--ink); padding:0 4px; color:var(--ink); background:var(--panel2);}
+/* ============ THE TV ============ */
+.tv-zone{display:flex; flex-direction:column; align-items:stretch;}
+.tv{
+  background:linear-gradient(160deg, var(--wood1), var(--wood2) 70%);
+  border:4px solid var(--ink); border-radius:14px;
+  box-shadow:8px 8px 0 rgba(43,36,19,.35), inset 0 0 0 3px rgba(255,240,200,.15);
+  padding:16px;
+}
+.tv-top{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+.brandplate{
+  font-weight:bold; letter-spacing:3px; font-size:13px; color:var(--cream);
+  background:linear-gradient(#4a3a24,#2c2114); border:2px solid #14100a;
+  padding:4px 12px; border-radius:4px; text-shadow:1px 1px 0 #000;
+}
+.led{width:10px; height:10px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ff9a8a, var(--red));
+  border:1px solid #5e150c; box-shadow:0 0 6px var(--red);}
+.chan{
+  margin-left:auto; font-weight:bold; font-size:13px; letter-spacing:2px; color:#ffb27a;
+  background:#101010; border:2px solid #000; border-radius:4px; padding:3px 10px;
+  text-shadow:0 0 6px #ff6a00; min-width:86px; text-align:center;
+}
+.tv-screen{
+  position:relative; background:#0a0a08; border:6px solid var(--bezel); border-radius:26px/30px;
+  box-shadow:inset 0 0 40px rgba(0,0,0,.9), inset 0 0 8px #000;
+  overflow:hidden;
+}
+#plot{width:100%; height:58vh; min-height:380px; display:block; image-rendering:pixelated; cursor:crosshair;
+  border-radius:20px/24px;}
+.glass{pointer-events:none; position:absolute; inset:0; border-radius:20px/24px;
+  background:
+    radial-gradient(ellipse at 30% 12%, rgba(255,255,255,.14), transparent 45%),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.5) 100%);}
+.scan{pointer-events:none; position:absolute; inset:0; border-radius:20px/24px;
+  background:repeating-linear-gradient(to bottom, rgba(0,0,0,.20) 0 2px, transparent 2px 4px);}
+.osd{
+  position:absolute; top:14px; left:18px; font-weight:bold; font-size:clamp(18px,3vw,30px);
+  color:#8dff8d; text-shadow:2px 2px 0 #003300, 0 0 12px #00ff00; letter-spacing:3px;
+  opacity:0; transition:opacity .4s; pointer-events:none;
+}
+.osd.show{opacity:1;}
+.tv-controls{display:flex; align-items:center; gap:18px; margin-top:12px;}
+.knob-block{display:flex; align-items:center; gap:8px;}
+.knob{
+  width:56px; height:56px; border-radius:50%; cursor:pointer; position:relative; flex-shrink:0;
+  background:radial-gradient(circle at 35% 30%, #8a7a5c, #3a2f1e 70%);
+  border:3px solid #14100a; box-shadow:2px 3px 0 rgba(0,0,0,.5);
+}
+.knob::after{content:""; position:absolute; left:50%; top:4px; width:5px; height:18px;
+  background:var(--cream); transform:translateX(-50%); border-radius:2px;}
+.knob-label{font-size:10px; color:var(--cream); letter-spacing:1px; line-height:1.5; text-shadow:1px 1px 0 #000;}
+.knob-label b{display:block; font-size:11px;}
+.speaker{flex:1; height:44px; border-radius:6px;
+  background:repeating-linear-gradient(90deg, rgba(0,0,0,.55) 0 4px, transparent 4px 9px);
+  border:2px solid rgba(0,0,0,.4);}
+.tv-foot{display:flex; justify-content:space-between; font-size:11px; color:var(--cream);
+  text-shadow:1px 1px 0 #000; margin-top:8px; opacity:.85;}
+#coords{font-weight:bold;}
+footer{text-align:center; color:var(--muted); font-size:11px; padding:12px; letter-spacing:1px;}
 </style>
 </head>
 <body>
-<header>
-  <div><h1>📈 Визуализатор функций</h1><p>y = f(x) · параметрические · полярные · math.js, Canvas</p></div>
-  <button class="ghost" id="themeBtn" title="Переключить тему">🌙 Тёмная</button>
-</header>
+<div class="topbar">
+  <div class="logo">PLOT-O-VISION 3000</div>
+</div>
+
 <main>
-  <div class="panel">
-    <div class="modes" role="tablist">
-      <button data-mode="cartesian" class="active">y = f(x)</button>
-      <button data-mode="parametric">x(t), y(t)</button>
-      <button data-mode="polar">r(θ)</button>
+  <div>
+    <div class="card">
+      <h2><span class="stamp">OWNER'S MANUAL</span></h2>
+      <details class="manual" open>
+        <summary>📺 How to use this TV (click to fold)</summary>
+        <ol>
+          <li><b>Pick a channel.</b> CH-1 plots <i>y=f(x)</i>, CH-2 parametric <i>x(t),y(t)</i>, CH-3 polar <i>r(θ)</i>. Switching channels loads a working demo — your old formula uses a different variable, so it can't follow.</li>
+          <li><b>Type a formula</b> and watch it grow pixel by pixel. Gaps (like <i>tan(x)</i> at π/2) stay open — no fake vertical lines.
+            <br><button data-act="gap">▶ try tan(x)</button><button data-act="chaos">▶ try sin(1/x)</button><button data-act="abs">▶ try |x+1|−x</button></li>
+          <li><b>Make sliders appear:</b> use any letter besides x, e.g. <i>a·sin(b·x)</i> gives you knobs for <i>a</i> and <i>b</i>.
+            <br><button data-act="sliders">▶ try a·sin(b·x)</button></li>
+          <li><b>Steer the picture:</b> mouse wheel = zoom, drag = pan, two fingers = pinch on phones. The right TV knob zooms too (drag it up/down, double-click resets).</li>
+          <li><b>Copy link</b> builds a URL that <i>contains your formulas, sliders and view</i> after the # — send it to a friend and they see exactly your screen.</li>
+        </ol>
+      </details>
     </div>
-    <div class="row" id="tRangeRow" style="display:none">
-      <label class="small">t min <input class="num" id="tMin" type="number" value="-10" step="1"></label>
-      <label class="small">t max <input class="num" id="tMax" type="number" value="10" step="1"></label>
-    </div>
-    <div class="row" id="thetaRow" style="display:none">
-      <label class="small">θ max <input class="num" id="thetaMax" type="number" value="12.566" step="0.1"></label>
-      <label class="small"><input type="checkbox" id="thetaDeg"> градусы</label>
-    </div>
-    <div id="fnList" style="display:flex;flex-direction:column;gap:10px"></div>
-    <button class="primary" id="addBtn">+ Добавить функцию</button>
-    <div>
-      <label class="small">Примеры (проверены):</label>
+
+    <div class="card">
+      <h2>CHANNEL (MODE)</h2>
+      <div class="modes">
+        <button data-mode="cartesian" class="active">CH-1<small>y = f(x)</small></button>
+        <button data-mode="parametric">CH-2<small>x(t), y(t)</small></button>
+        <button data-mode="polar">CH-3<small>r(θ)</small></button>
+      </div>
       <div class="presets">
         <button data-preset="sin(x)">sin(x)</button>
         <button data-preset="tan(x)">tan(x)</button>
@@ -86,49 +185,127 @@ kbd{background:var(--panel2);border:1px solid var(--border);border-radius:4px;pa
         <button data-preset="x^2">x^2</button>
         <button data-preset="sin(1/x)">sin(1/x)</button>
         <button data-preset="a*sin(b*x)">a·sin(b·x)</button>
+        <button data-preset="|x+1|-x">|x+1|−x</button>
+      </div>
+      <div id="fnList"></div>
+      <div class="row"><button class="px-btn primary" id="addBtn">+ ADD FUNCTION</button></div>
+      <div class="row" id="tRangeRow" style="display:none">
+        <span>t:</span><input class="num" id="tMin" type="number" value="-10" step="1">
+        <span>→</span><input class="num" id="tMax" type="number" value="10" step="1">
+      </div>
+      <div class="row" id="thetaRow" style="display:none">
+        <span>θ max:</span><input class="num" id="thetaMax" type="number" value="12.566" step="0.1">
       </div>
     </div>
-    <div>
-      <label class="small">Параметры из формул (слайдеры появляются автоматически):</label>
-      <div id="params" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
-    </div>
-    <div class="row">
-      <button class="ghost" id="resetView">⌂ Сбросить вид</button>
-      <button class="ghost" id="shareBtn">🔗 Копировать ссылку</button>
+
+    <div class="card">
+      <h2>PARAMETERS (AUTO SLIDERS)</h2>
+      <div id="params"></div>
+      <div class="row">
+        <button class="px-btn" id="replayBtn">↻ REPLAY</button>
+        <button class="px-btn" id="resetView">RESET VIEW</button>
+        <button class="px-btn" id="shareBtn">COPY LINK</button>
+      </div>
+      <div class="hint" id="shareHint">COPY LINK packs formulas + sliders + view into the URL (after #).</div>
+      <div class="hint">Powers: <code>x^2</code> · abs: <code>|x+1|-x</code> · funcs: <code>sin cos tan sqrt abs log exp</code> · consts: <code>pi e</code></div>
     </div>
   </div>
-  <div class="canvas-wrap">
-    <canvas id="plot"></canvas>
-    <div class="hint">
-      <span>🖱️ Колесо — зум · перетаскивание — сдвиг · на телефоне: 1 палец — сдвиг, 2 пальца — зум</span>
-      <span id="coords">x: 0, y: 0</span>
+
+  <div class="tv-zone">
+    <div class="tv">
+      <div class="tv-top">
+        <div class="brandplate">PLOT-O-VISION</div>
+        <div class="led"></div>
+        <div class="chan" id="chanDisp">CH-01</div>
+      </div>
+      <div class="tv-screen">
+        <canvas id="plot"></canvas>
+        <div class="scan"></div>
+        <div class="glass"></div>
+        <div class="osd" id="osd">CH-01</div>
+      </div>
+      <div class="tv-controls">
+        <div class="knob-block">
+          <div class="knob" id="knobPx" title="Pixel size: click to switch 1X/2X/3X"></div>
+          <div class="knob-label"><b>PIXEL</b><span id="pxLabel">2X · click</span></div>
+        </div>
+        <div class="knob-block">
+          <div class="knob" id="knobZoom" title="Zoom: drag up/down, double-click resets"></div>
+          <div class="knob-label"><b>ZOOM</b><span>drag · 2×click=reset</span></div>
+        </div>
+        <div class="speaker"></div>
+      </div>
+      <div class="tv-foot"><span id="status">READY</span><span id="coords">X:0 Y:0</span></div>
     </div>
   </div>
 </main>
-<footer>Один <kbd>index.html</kbd> + <kbd>math.js CDN</kbd>, без eval · разрывы tan(x), 1/x отсекаются без вертикальных линий</footer>
 
 <script>
 (function(){
 "use strict";
-const canvas=document.getElementById('plot'), ctx=canvas.getContext('2d');
+const canvas=document.getElementById('plot');
+const ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
 const fnList=document.getElementById('fnList'), paramsBox=document.getElementById('params');
-const coordsEl=document.getElementById('coords');
-const PALETTE=['#3b82f6','#ef4444','#22c55e','#f59e0b','#a855f7','#06b6d4','#ec4899','#14b8a6'];
+const coordsEl=document.getElementById('coords'), statusEl=document.getElementById('status');
+const chanDisp=document.getElementById('chanDisp'), osd=document.getElementById('osd');
+const PALETTE=['#1a5c00','#8a008a','#005a80','#6b5200','#a34d00','#a32020','#0033aa','#333333'];
+const PLOT_LW=1;
 const VAR_BY_MODE={cartesian:'x',parametric:'t',polar:'theta'};
+const CH_NUM={cartesian:'CH-01',parametric:'CH-02',polar:'CH-03'};
+const OSD_TXT={cartesian:'CH-01 · Y=F(X)',parametric:'CH-02 · PARAM',polar:'CH-03 · POLAR'};
+// one working demo per channel — switching channels loads it, so modes always "work"
+const DEMOS={
+  cartesian:[{expr:'sin(x)/x'}],
+  parametric:[{expr:'3*cos(t)',expr2:'2*sin(2*t)'}],
+  polar:[{expr:'2+cos(3*theta)'}]
+};
 const RESERVED=new Set(['x','t','theta','pi','e','E','phi','tau','true','false','null','i','Infinity','NaN']);
-let uid=1;
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let uid=1, pixelFactor=2;
 const state={mode:'cartesian',functions:[],params:{},view:{cx:0,cy:0,scale:60},tMin:-10,tMax:10,thetaMax:Math.PI*4};
+const anim={t0:performance.now(),active:false};
+// math.js has no |...| syntax, so we rewrite bars into abs(...).
+// Innermost pairs first (handles nesting like ||x|+1|); a lone unmatched
+// bar is left untouched so math.js reports a clear syntax error.
+function convertAbs(src){
+  let s=String(src), guard=0;
+  while(s.indexOf('|')!==-1&&guard++<20){
+    const next=s.replace(/\|([^|]+)\|/,'abs($1)');
+    if(next===s)break;
+    s=next;
+  }
+  return s;
+}
+const P=convertAbs; // preprocess before every math.parse / math.compile
 
-function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
-function defaultView(){return{cx:0,cy:0,scale:60}}
-
-function makeFn(expr,color){return{id:uid++,color:color||PALETTE[(uid-2)%PALETTE.length],expr:expr||'',expr2:'sin(t)',visible:true,compiled:null,compiled2:null,error:''}}
-function varName(){return VAR_BY_MODE[state.mode]}
-
-function addFn(expr,expr2){
-  const f=makeFn(expr,PALETTE[(state.functions.length)%PALETTE.length]);
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function defaultView(){return{cx:0,cy:0,scale:60};}
+function makeFn(expr,color,expr2){
+  return{id:uid++,color:color||PALETTE[(uid-2)%PALETTE.length],expr:expr||'',
+    expr2:expr2||'2*sin(2*t)',visible:true,compiled:null,compiled2:null,error:''};
+}
+function loadDemo(mode){
+  state.functions=[];
+  for(const d of DEMOS[mode]){
+    const f=makeFn(d.expr,PALETTE[state.functions.length%PALETTE.length],d.expr2);
+    state.functions.push(f);
+  }
+}
+function addFn(expr,expr2,animate){
+  const f=makeFn(expr,PALETTE[state.functions.length%PALETTE.length],expr2);
   if(expr2!==undefined)f.expr2=expr2;
-  state.functions.push(f); renderFnList(); refreshParams(); scheduleDraw();
+  state.functions.push(f); renderFnList(); refreshParams();
+  if(animate!==false)playAnim(); else scheduleDraw();
+}
+function playAnim(){
+  if(REDUCED){scheduleDraw();return;}
+  anim.t0=performance.now(); anim.active=true; scheduleDraw();
+}
+let osdTimer=0;
+function flashOSD(txt){
+  osd.textContent=txt; osd.classList.add('show');
+  clearTimeout(osdTimer); osdTimer=setTimeout(()=>osd.classList.remove('show'),1400);
 }
 function compileAll(){
   for(const f of state.functions){
@@ -136,260 +313,247 @@ function compileAll(){
     try{
       if(state.mode==='cartesian'){
         if(!f.expr.trim())continue;
-        f.compiled=math.compile(f.expr);
-        f.compiled.evaluate(Object.assign({x:0},state.params)); // ранняя проверка синтаксиса
+        f.compiled=math.compile(P(f.expr));
+        f.compiled.evaluate(Object.assign({x:0},state.params));
       }else if(state.mode==='parametric'){
         if(!f.expr.trim()||!f.expr2.trim())continue;
-        f.compiled=math.compile(f.expr);
-        f.compiled2=math.compile(f.expr2);
+        f.compiled=math.compile(P(f.expr));
+        f.compiled2=math.compile(P(f.expr2));
         const s=Object.assign({t:0},state.params);
         f.compiled.evaluate(s); f.compiled2.evaluate(s);
       }else{
         if(!f.expr.trim())continue;
-        f.compiled=math.compile(f.expr);
+        f.compiled=math.compile(P(f.expr));
         f.compiled.evaluate(Object.assign({theta:0},state.params));
       }
-    }catch(e){ f.error='⚠ '+friendlyErr(e); }
+    }catch(e){ f.error='Error: '+friendlyErr(e); }
   }
 }
-function friendlyErr(e){
-  let m=String((e&&e.message)||e);
-  m=m.replace(/^.*Error:\s*/,'');
-  return m+' — проверьте скобки, используйте sin(x), sqrt(x), x^2, а не **.';
-}
-// --- автопоиск параметров через AST, без eval ---
+function friendlyErr(e){return String((e&&e.message)||e).replace(/^.*Error:\s*/,'');}
 function detectParams(){
   const found=new Set();
   for(const f of state.functions){
     for(const src of (state.mode==='parametric'?[f.expr,f.expr2]:[f.expr])){
       if(!src||!src.trim())continue;
       try{
-        const node=math.parse(src);
-        node.traverse((n, path, parent)=>{
-          // имя функции (sin в sin(x)) — это тоже SymbolNode, но parent.fn === n; его пропускаем.
-          // Аргументы (c в cos(c)) имеют parent FunctionNode, но parent.fn !== n — это параметры.
-          const isFnName = parent && parent.isFunctionNode && parent.fn === n;
-          if(n&&n.isSymbolNode && !isFnName && !RESERVED.has(n.name) && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n.name)){
-            // отбрасываем имена функций типа sin: они FunctionNode, не SymbolNode — сюда не попадут
-            found.add(n.name);
-          }
+        math.parse(P(src)).traverse((n,path,parent)=>{
+          const isFnName=parent&&parent.isFunctionNode&&parent.fn===n;
+          if(n&&n.isSymbolNode&&!isFnName&&!RESERVED.has(n.name)&&/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n.name))found.add(n.name);
         });
-      }catch(e){/* синтаксическая ошибка — покажем в строке функции */}
+      }catch(e){}
     }
   }
-  // удалить исчезнувшие, добавить новые (дефолт 1)
-  for(const k of Object.keys(state.params)) if(!found.has(k)) delete state.params[k];
-  for(const k of found) if(!(k in state.params)) state.params[k]=1;
-  return [...found].sort();
+  for(const k of Object.keys(state.params))if(!found.has(k))delete state.params[k];
+  for(const k of found)if(!(k in state.params))state.params[k]=1;
+  return[...found].sort();
 }
 function renderParams(){
   const names=detectParams();
   paramsBox.innerHTML='';
-  if(!names.length){paramsBox.innerHTML='<span class="small" style="font-size:12px;color:var(--muted)">Пока нет параметров. Попробуйте <b>a*sin(b*x)</b>.</span>';return;}
+  if(!names.length){paramsBox.innerHTML='<div class="hint" style="margin:4px 0">No parameters — try <b>a*sin(b*x)</b>.</div>';return;}
   for(const n of names){
     const v=state.params[n];
     const d=document.createElement('div');d.className='param';
-    d.innerHTML=`<b>${n}</b>`;
-    const r=document.createElement('input');r.type='range';r.min=-10;r.max=10;r.step=0.05;r.value=v;
-    const num=document.createElement('input');num.type='number';num.step=0.1;num.value=v;
+    const head=document.createElement('div');head.className='param-head';
     const out=document.createElement('output');out.textContent=Number(v).toFixed(2);
-    r.oninput=()=>{state.params[n]=parseFloat(r.value);num.value=r.value;out.textContent=Number(r.value).toFixed(2);scheduleDraw();};
-    num.oninput=()=>{const x=parseFloat(num.value);if(!isFinite(x))return;state.params[n]=x;out.textContent=x.toFixed(2);
-      if(x>=-10&&x<=10)r.value=x;scheduleDraw();};
-    const wrap=document.createElement('div');wrap.style.display='flex';wrap.style.gap='6px';wrap.style.alignItems='center';
-    wrap.append(num);
-    d.append(r,wrap);paramsBox.append(d);
+    head.innerHTML='<span>'+n+' =</span>';head.append(out);
+    const r=document.createElement('input');r.type='range';r.min=-10;r.max=10;r.step=0.05;r.value=v;
+    r.oninput=()=>{state.params[n]=parseFloat(r.value);out.textContent=Number(r.value).toFixed(2);scheduleDraw();};
+    d.append(head,r);paramsBox.append(d);
   }
+}
+let typeTimer=0;
+function onFormulaEdit(){
+  refreshParams();
+  clearTimeout(typeTimer);
+  typeTimer=setTimeout(playAnim,350);
 }
 function renderFnList(){
   fnList.innerHTML='';
   state.functions.forEach((f,idx)=>{
     const box=document.createElement('div');box.className='fn';
     const top=document.createElement('div');top.className='fn-top';
-    const c=document.createElement('input');c.type='color';c.value=f.color;
+    const c=document.createElement('input');c.type='color';c.value=f.color;c.title='Color';
     c.oninput=()=>{f.color=c.value;scheduleDraw();};
-    const eye=document.createElement('button');eye.className='icon-btn';eye.textContent=f.visible?'👁':'🚫';eye.title='Показать/скрыть';
+    const eye=document.createElement('button');eye.className='icon-btn';eye.textContent=f.visible?'ON':'OFF';eye.title='Show/hide';
     eye.onclick=()=>{f.visible=!f.visible;renderFnList();scheduleDraw();};
-    const del=document.createElement('button');del.className='icon-btn';del.textContent='✕';
-    del.onclick=()=>{state.functions.splice(idx,1);renderFnList();refreshParams();scheduleDraw();};
+    const del=document.createElement('button');del.className='icon-btn';del.textContent='X';del.title='Delete';
+    del.onclick=()=>{state.functions.splice(idx,1);renderFnList();refreshParams();playAnim();};
     top.append(c);
-    const v=varName();
     if(state.mode==='parametric'){
-      const i1=document.createElement('input');i1.type='text';i1.placeholder='x(t), напр. cos(t)';i1.value=f.expr;
-      const i2=document.createElement('input');i2.type='text';i2.placeholder='y(t), напр. sin(2t)';i2.value=f.expr2;
-      i1.oninput=()=>{f.expr=i1.value;refreshParams();scheduleDraw();};
-      i2.oninput=()=>{f.expr2=i2.value;refreshParams();scheduleDraw();};
-      top.append(i1,eye,del);
-      const row2=document.createElement('div');row2.className='fn-top';row2.append(i2);
-      const lab=document.createElement('div');lab.className='small';lab.style.cssText='font-size:11px;color:var(--muted)';lab.textContent=`f${idx+1}: x(t), y(t) · t ∈ [${state.tMin}, ${state.tMax}]`;
-      const err=document.createElement('div');err.className='fn-err';err.id='err-'+f.id;
-      box.append(lab,top,row2,err);
+      const i1=document.createElement('input');i1.type='text';i1.placeholder='x(t), e.g. 3*cos(t)';i1.value=f.expr;
+      i1.oninput=()=>{f.expr=i1.value;onFormulaEdit();};
+      top.append(i1,eye,del);box.append(top);
+      const row2=document.createElement('div');row2.className='fn-top';row2.style.marginTop='6px';
+      const i2=document.createElement('input');i2.type='text';i2.placeholder='y(t), e.g. 2*sin(2*t)';i2.value=f.expr2;
+      i2.oninput=()=>{f.expr2=i2.value;onFormulaEdit();};
+      row2.append(i2);box.append(row2);
     }else{
       const inp=document.createElement('input');inp.type='text';
-      inp.placeholder=state.mode==='cartesian'?'sin(x)/x':'cos(3*theta)';
+      inp.placeholder=state.mode==='cartesian'?'e.g. sin(x)/x':'e.g. 2+cos(3*theta)';
       inp.value=f.expr;
-      inp.setAttribute('aria-label','Формула');
-      inp.oninput=()=>{f.expr=inp.value;refreshParams();scheduleDraw();};
-      top.append(inp,eye,del);
-      const lab=document.createElement('div');lab.style.cssText='font-size:11px;color:var(--muted)';
-      lab.textContent=state.mode==='cartesian'?`f${idx+1}(x)`:`r(θ), функция ${idx+1}`;
-      const err=document.createElement('div');err.className='fn-err';err.id='err-'+f.id;
-      box.append(lab,top,err);
+      inp.oninput=()=>{f.expr=inp.value;onFormulaEdit();};
+      top.append(inp,eye,del);box.append(top);
     }
-    if(!f.visible)box.style.opacity='0.55';
+    const err=document.createElement('div');err.className='fn-err';err.id='err-'+f.id;
+    box.append(err);
+    if(!f.visible)box.style.opacity='0.5';
     fnList.append(box);
   });
 }
 function refreshParams(){compileAll();renderParams();updateErrors();}
-function updateErrors(){
-  for(const f of state.functions){
-    const el=document.getElementById('err-'+f.id);
-    if(el)el.textContent=f.error||'';
-  }
-}
-// ---------- Canvas ----------
+function updateErrors(){for(const f of state.functions){const el=document.getElementById('err-'+f.id);if(el)el.textContent=f.error||'';}}
+/* ---------- canvas ---------- */
 function resize(){
-  const r=canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
-  canvas.width=Math.max(300,r.width*dpr);canvas.height=Math.max(300,r.height*dpr);
+  const r=canvas.getBoundingClientRect();
+  canvas.width=Math.max(96,Math.round(r.width/pixelFactor));
+  canvas.height=Math.max(96,Math.round((r.height||400)/pixelFactor));
   scheduleDraw();
 }
-function niceStep(pxPerUnit){
-  const target=70; // px между линиями
-  const raw=target/pxPerUnit;
-  const mag=Math.pow(10,Math.floor(Math.log10(raw)));
-  for(const m of [1,2,5,10]) if(m*mag>=raw) return m*mag;
+function niceStep(s){
+  const raw=56/s, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  for(const m of[1,2,5,10])if(m*mag>=raw)return m*mag;
   return 10*mag;
 }
-function draw(){
+function fmt(n){const a=Math.abs(n);if(a!==0&&(a>=10000||a<0.001))return n.toExponential(0);return String(Math.round(n*1000)/1000);}
+let raf=0;
+function scheduleDraw(){cancelAnimationFrame(raf);raf=requestAnimationFrame(draw);}
+function revealOf(j,now){
+  if(!anim.active)return 1;
+  const per=750, delay=j*160;
+  const t=(now-anim.t0-delay)/per;
+  if(t<=0)return 0;
+  if(t>=1)return 1;
+  return Math.floor(t*40)/40;
+}
+function draw(now){
   compileAll();updateErrors();
   const W=canvas.width,H=canvas.height;
-  const {cx,cy,scale}=state.view;
-  const ox=W/2-cx*scale, oy=H/2+cy*scale;
-  ctx.clearRect(0,0,W,H);
-  const dpr=window.devicePixelRatio||1;
-  // сетка
+  const scale=state.view.scale/pixelFactor;
+  const ox=Math.round(W/2-state.view.cx*scale), oy=Math.round(H/2+state.view.cy*scale);
+  ctx.imageSmoothingEnabled=false;
+  ctx.fillStyle='#f4ecd0';ctx.fillRect(0,0,W,H);
   const step=niceStep(scale);
-  const x0=(0-ox)/scale, x1=(W-ox)/scale, y1=(oy-0)/scale, y0=(oy-H)/scale;
+  const x0=(0-ox)/scale,x1=(W-ox)/scale,y0=(oy-H)/scale;
   ctx.lineWidth=1;
-  ctx.font=`${11*dpr}px system-ui`;ctx.textBaseline='top';
-  const startX=Math.floor(x0/step)*step;
-  for(let x=startX;x<=x1;x+=step){
-    const px=ox+x*scale;
-    const isAxis=Math.abs(x)<step*1e-9;
-    ctx.strokeStyle=isAxis?cssVar('--axis'):cssVar('--grid');
+  for(let x=Math.floor(x0/step)*step;x<=x1;x+=step+.0001){
+    const px=Math.round(ox+x*scale)+.5;
+    ctx.strokeStyle=Math.abs(x)<step*1e-9?'#8a8058':'#cfc191';
     ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
-    if(!isAxis){ctx.fillStyle=cssVar('--muted');ctx.fillText(fmt(x),px+4*dpr,oy+4*dpr);}
   }
-  const startY=Math.floor(y0/step)*step;
-  for(let y=startY;y<=y1;y+=step){
-    const py=oy-y*scale;
-    const isAxis=Math.abs(y)<step*1e-9;
-    ctx.strokeStyle=isAxis?cssVar('--axis'):cssVar('--grid');
+  // y grid
+  const y1=(oy-0)/scale;
+  for(let y=Math.floor(y0/step)*step;y<=y1;y+=step+.0001){
+    const py=Math.round(oy-y*scale)+.5;
+    ctx.strokeStyle=Math.abs(y)<step*1e-9?'#8a8058':'#cfc191';
     ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(W,py);ctx.stroke();
-    if(!isAxis){ctx.fillStyle=cssVar('--muted');ctx.fillText(fmt(y),ox+4*dpr,py+3*dpr);}
   }
-  // ноль
-  ctx.fillStyle=cssVar('--muted');ctx.fillText('0',ox+4*dpr,oy+4*dpr);
-  // графики
-  const MAXJUMP=H*0.9; // разрыв: вертикальный скачок больше ~90% высоты -> разрыв линии
+  ctx.font='8px "Courier New",monospace';ctx.fillStyle='#6f6647';
+  for(let x=Math.floor(x0/step)*step;x<=x1;x+=step+.0001){
+    if(Math.abs(x)<step*1e-9)continue;
+    ctx.fillText(fmt(x),Math.round(ox+x*scale)+2,oy+2);
+  }
+  const MAXJUMP=H*0.9;
+  let okCount=0, stillAnim=false, j=0;
   for(const f of state.functions){
-    if(!f.visible||f.error||!f.compiled)continue;
-    ctx.strokeStyle=f.color;ctx.lineWidth=2*dpr;ctx.lineJoin='round';ctx.lineCap='round';
+    const reveal=revealOf(j,now||performance.now()); j++;
+    if(reveal<1)stillAnim=true;
+    if(!f.visible||f.error||!f.compiled||reveal<=0)continue;
+    okCount++;
+    ctx.strokeStyle=f.color;ctx.lineWidth=PLOT_LW;ctx.lineJoin='miter';ctx.lineCap='square';
     ctx.beginPath();
-    let pen=false, prevY=null, prevPX=null, prevPY=null;
+    let pen=false,prevY=null,prevPX=null,prevPY=null,headX=0,headY=0;
     const scope=Object.assign({},state.params);
     const emit=(mx,my)=>{
       if(!isFinite(mx)||!isFinite(my)||Math.abs(my)>1e6||Math.abs(mx)>1e6){pen=false;prevY=null;return;}
-      const px=ox+mx*scale, py=oy-my*scale;
+      const px=Math.round(ox+mx*scale),py=Math.round(oy-my*scale);
       if(!isFinite(px)||!isFinite(py)){pen=false;return;}
-      if(pen&&prevY!==null){
-        // детект разрыва: резкий скачок по y при малом шаге по x
-        if(Math.abs(py-prevPY)>MAXJUMP && Math.abs(px-prevPX)<40*dpr){pen=false;}
-      }
-      if(!pen){ctx.moveTo(px,py);pen=true;}
-      else ctx.lineTo(px,py);
-      prevY=my;prevPX=px;prevPY=py;
+      if(pen&&prevY!==null&&Math.abs(py-prevPY)>MAXJUMP&&Math.abs(px-prevPX)<20){pen=false;}
+      if(!pen){ctx.moveTo(px+.5,py+.5);pen=true;}
+      else ctx.lineTo(px+.5,py+.5);
+      prevY=my;prevPX=px;prevPY=py;headX=px;headY=py;
     };
     try{
       if(state.mode==='cartesian'){
-        const N=Math.ceil(W/ (dpr) *1.5); // ~1.5 выборки на css-пиксель — честно рисует sin(1/x)
-        for(let i=0;i<=N;i++){
-          const px=i/N*W;
-          const mx=(px-ox)/scale;
-          let my;
-          try{my=f.compiled.evaluate(Object.assign(scope,{x:mx}));my=Number(my);}
-          catch(e){pen=false;prevY=null;continue;}
-          if(typeof my!=='number'||!isFinite(my)){pen=false;prevY=null;continue;}
-          emit(mx,my);
+        const mid=Math.round(W/2);
+        const half=Math.ceil(W/2*reveal);
+        const pending=[];
+        for(let d=0;d<=half;d++){
+          for(const i of(d===0?[mid]:[mid-d,mid+d])){
+            if(i<0||i>W)continue;
+            const mx=(i-ox)/scale;
+            let my;try{my=Number(f.compiled.evaluate(Object.assign(scope,{x:mx})));}catch(e){continue;}
+            if(!isFinite(my))continue;
+            pending.push([mx,my]);
+          }
         }
-      }else if(state.mode==='parametric'){
-        const N=2500;
-        for(let i=0;i<=N;i++){
-          const t=state.tMin+(state.tMax-state.tMin)*i/N;
-          let mx,my;
-          try{
-            mx=Number(f.compiled.evaluate(Object.assign(scope,{t})));
-            my=Number(f.compiled2.evaluate(Object.assign(scope,{t})));
-          }catch(e){pen=false;continue;}
-          emit(mx,my);
-        }
+        pending.sort((a,b)=>a[0]-b[0]);
+        for(const pair of pending)emit(pair[0],pair[1]);
       }else{
-        const N=2500, deg=document.getElementById('thetaDeg').checked;
-        const tMax=parseFloat(document.getElementById('thetaMax').value)||Math.PI*2;
-        for(let i=0;i<=N;i++){
-          const th=tMax*i/N;
-          const arg=deg?th*Math.PI/180:th;
-          let r;
-          try{r=Number(f.compiled.evaluate(Object.assign(scope,{theta:arg})));}
-          catch(e){pen=false;continue;}
-          if(!isFinite(r)||Math.abs(r)>1e6){pen=false;continue;}
-          emit(r*Math.cos(arg),r*Math.sin(arg));
+        const N=Math.max(50,Math.floor(2000*reveal));
+        if(state.mode==='parametric'){
+          for(let i=0;i<=N;i++){
+            const t=state.tMin+(state.tMax-state.tMin)*i/2000;
+            let mx,my;
+            try{mx=Number(f.compiled.evaluate(Object.assign(scope,{t})));my=Number(f.compiled2.evaluate(Object.assign(scope,{t})));}
+            catch(e){pen=false;continue;}
+            emit(mx,my);
+          }
+        }else{
+          for(let i=0;i<=N;i++){
+            const th=state.thetaMax*i/2000;let r;
+            try{r=Number(f.compiled.evaluate(Object.assign(scope,{theta:th})));}
+            catch(e){pen=false;continue;}
+            if(!isFinite(r)||Math.abs(r)>1e6){pen=false;continue;}
+            emit(r*Math.cos(th),r*Math.sin(th));
+          }
         }
       }
-    }catch(e){f.error='⚠ '+friendlyErr(e);}
+    }catch(e){f.error='Error: '+friendlyErr(e);}
     ctx.stroke();
+    if(reveal>0&&reveal<1&&pen){
+      ctx.fillStyle=f.color;
+      const s=pixelFactor>=3?5:4;
+      ctx.fillRect(headX-s/2,headY-s/2,s,s);
+    }
   }
+  statusEl.textContent=stillAnim?'DRAWING…':(okCount?('READY · '+okCount+' FN · '+W+'×'+H+'PX'):'READY');
+  if(stillAnim&&anim.active)scheduleDraw();
+  else anim.active=false;
 }
-function fmt(n){
-  const a=Math.abs(n);
-  if(a!==0&&(a>=10000||a<0.001))return n.toExponential(1);
-  return String(Math.round(n*1000)/1000);
-}
-let raf=0;
-function scheduleDraw(){cancelAnimationFrame(raf);raf=requestAnimationFrame(draw);}
-// ---------- взаимодействие ----------
+/* ---------- pointer: zoom + pan + touch ---------- */
 (function bind(){
   let drag=null,pinch0=null;
-  const toMath=(cx,cy)=>({x:(cx* (canvas.width/canvas.getBoundingClientRect().width)- (canvas.width/2-state.view.cx*state.view.scale))/state.view.scale,
-                          y:((canvas.height/2+state.view.cy*state.view.scale)-cy*(canvas.height/canvas.getBoundingClientRect().height))/state.view.scale});
+  const toLow=(e)=>{
+    const r=canvas.getBoundingClientRect();
+    return{x:(e.clientX-r.left)/r.width*canvas.width, y:(e.clientY-r.top)/r.height*canvas.height};
+  };
   canvas.addEventListener('wheel',e=>{
     e.preventDefault();
-    const r=canvas.getBoundingClientRect();
-    const mx=e.clientX-r.left, my=e.clientY-r.top;
-    const dpr=canvas.width/r.width;
-    const px=mx*dpr, py=my*dpr;
-    const {cx,cy,scale}=state.view;
-    const ox=canvas.width/2-cx*scale, oy=canvas.height/2+cy*scale;
-    const wx=(px-ox)/scale, wy=(oy-py)/scale;
-    const k=Math.exp(-e.deltaY*0.0015);
-    const ns=Math.min(5000,Math.max(2,scale*k));
-    state.view.scale=ns;
-    state.view.cx=(canvas.width/2-(px-wx*ns))/ns;
-    state.view.cy=((py+wy*ns)-canvas.height/2)/ns;
-    scheduleDraw();
+    zoomAt(toLow(e),Math.exp(-e.deltaY*0.0015));
   },{passive:false});
+  function zoomAt(p,k){
+    const scale=state.view.scale/pixelFactor;
+    const ox=canvas.width/2-state.view.cx*scale, oy=canvas.height/2+state.view.cy*scale;
+    const wx=(p.x-ox)/scale, wy=(oy-p.y)/scale;
+    state.view.scale=Math.min(4000,Math.max(4,state.view.scale*k));
+    const ns=state.view.scale/pixelFactor;
+    state.view.cx=(canvas.width/2-(p.x-wx*ns))/ns;
+    state.view.cy=((p.y+wy*ns)-canvas.height/2)/ns;
+    scheduleDraw();
+  }
+  window.__zoomAt=zoomAt;
   canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY,cx:state.view.cx,cy:state.view.cy};});
   canvas.addEventListener('pointermove',e=>{
     const r=canvas.getBoundingClientRect();
-    const mx=e.clientX-r.left,my=e.clientY-r.top;
-    const dpr=canvas.width/r.width;
-    const wx=(mx*dpr-(canvas.width/2-state.view.cx*state.view.scale))/state.view.scale;
-    const wy=((canvas.height/2+state.view.cy*state.view.scale)-my*dpr)/state.view.scale;
-    coordsEl.textContent=`x: ${fmt(wx)}, y: ${fmt(wy)}`;
+    const fx=(e.clientX-r.left)/r.width, fy=(e.clientY-r.top)/r.height;
+    const scale=state.view.scale/pixelFactor;
+    const ox=canvas.width/2-state.view.cx*scale, oy=canvas.height/2+state.view.cy*scale;
+    coordsEl.textContent='X:'+fmt((fx*canvas.width-ox)/scale)+' Y:'+fmt((oy-fy*canvas.height)/scale);
     if(drag){
-      const dx=(e.clientX-drag.x)*dpr, dy=(e.clientY-drag.y)*dpr;
-      state.view.cx=drag.cx-dx/state.view.scale;
-      state.view.cy=drag.cy+dy/state.view.scale;
+      const dx=(e.clientX-drag.x)/r.width*canvas.width, dy=(e.clientY-drag.y)/r.height*canvas.height;
+      state.view.cx=drag.cx-dx/scale;
+      state.view.cy=drag.cy+dy/scale;
       scheduleDraw();
     }
   });
@@ -398,57 +562,91 @@ function scheduleDraw(){cancelAnimationFrame(raf);raf=requestAnimationFrame(draw
     if(e.touches.length===2){
       e.preventDefault();
       const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-      if(pinch0)state.view.scale=Math.min(5000,Math.max(2,state.view.scale*d/pinch0));
+      if(pinch0)state.view.scale=Math.min(4000,Math.max(4,state.view.scale*d/pinch0));
       pinch0=d;scheduleDraw();
     }
   },{passive:false});
   canvas.addEventListener('touchend',()=>pinch0=null);
 })();
-// ---------- UI ----------
-document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.modes button').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');state.mode=b.dataset.mode;
+/* ---------- TV knobs ---------- */
+const knobPx=document.getElementById('knobPx'), pxLabel=document.getElementById('pxLabel');
+function paintKnobPx(){knobPx.style.transform='rotate('+((pixelFactor-1)*70-70)+'deg)';pxLabel.textContent=pixelFactor+'X · click';}
+knobPx.onclick=()=>{
+  pixelFactor=pixelFactor>=3?1:pixelFactor+1;
+  paintKnobPx();resize();
+};
+paintKnobPx();
+const knobZoom=document.getElementById('knobZoom');
+(function(){
+  let z=null;
+  knobZoom.addEventListener('pointerdown',e=>{knobZoom.setPointerCapture(e.pointerId);z={y:e.clientY,s:state.view.scale};});
+  knobZoom.addEventListener('pointermove',e=>{
+    if(!z)return;
+    state.view.scale=Math.min(4000,Math.max(4,z.s*Math.exp((z.y-e.clientY)*0.01)));
+    knobZoom.style.transform='rotate('+Math.max(-140,Math.min(140,(z.y-e.clientY)))+'deg)';
+    scheduleDraw();
+  });
+  knobZoom.addEventListener('pointerup',()=>{z=null;knobZoom.style.transform='rotate(0deg)';});
+  knobZoom.addEventListener('dblclick',()=>{state.view=defaultView();scheduleDraw();});
+})();
+/* ---------- UI ---------- */
+function syncChrome(){
+  document.querySelectorAll('.modes button').forEach(x=>x.classList.toggle('active',x.dataset.mode===state.mode));
+  chanDisp.textContent=CH_NUM[state.mode];
   document.getElementById('tRangeRow').style.display=state.mode==='parametric'?'flex':'none';
   document.getElementById('thetaRow').style.display=state.mode==='polar'?'flex':'none';
-  renderFnList();refreshParams();scheduleDraw();
-});
+}
+function setMode(m,keepFns){
+  state.mode=m;
+  if(!keepFns)loadDemo(m); // fresh working demo so the channel always shows a picture
+  syncChrome();renderFnList();refreshParams();
+  flashOSD(OSD_TXT[m]);playAnim();
+}
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 document.getElementById('addBtn').onclick=()=>addFn('');
+document.getElementById('replayBtn').onclick=playAnim;
 document.getElementById('resetView').onclick=()=>{state.view=defaultView();scheduleDraw();};
 document.getElementById('tMin').oninput=e=>{state.tMin=parseFloat(e.target.value)||0;scheduleDraw();};
 document.getElementById('tMax').oninput=e=>{state.tMax=parseFloat(e.target.value)||10;scheduleDraw();};
-document.getElementById('thetaMax').oninput=scheduleDraw;
-document.getElementById('thetaDeg').onchange=scheduleDraw;
-document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{
-  addFn(b.dataset.preset); 
+document.getElementById('thetaMax').oninput=e=>{state.thetaMax=parseFloat(e.target.value)||Math.PI*2;playAnim();};
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>addFn(b.dataset.preset));
+// tutorial action buttons
+document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
+  const a=b.dataset.act;
+  if(a==='gap'){if(state.mode!=='cartesian')setMode('cartesian');addFn('tan(x)');}
+  if(a==='chaos'){if(state.mode!=='cartesian')setMode('cartesian');addFn('sin(1/x)');}
+  if(a==='sliders'){if(state.mode!=='cartesian')setMode('cartesian');addFn('a*sin(b*x)');}
+  if(a==='abs'){if(state.mode!=='cartesian')setMode('cartesian');addFn('|x+1|-x');}
 });
 document.getElementById('shareBtn').onclick=async()=>{
   const data={mode:state.mode,fn:state.functions.map(f=>[f.expr,f.expr2,f.color]),p:state.params,v:state.view};
-  const url=location.origin+location.pathname+'#'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-  try{await navigator.clipboard.writeText(url);alert('Ссылка скопирована!');}catch(e){prompt('Скопируйте ссылку:',url);}
+  const base=location.href.split('#')[0]; // works on https, http and file://
+  const url=base+'#'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  let ok=false;
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url);ok=true;}
+  }catch(e){ok=false;} // file:// has no clipboard API — prompt fallback below
+  if(ok){statusEl.textContent='LINK COPIED — OPEN IT TO RESTORE THIS SCREEN';}
+  else{prompt('Copy this link — it holds your formulas, sliders and view:',url);}
+  try{history.replaceState(null,'',url);}catch(e){}
 };
-// тема
-const themeBtn=document.getElementById('themeBtn');
-function setTheme(t){document.documentElement.dataset.theme=t;localStorage.setItem('theme',t);themeBtn.textContent=t==='dark'?'🌙 Тёмная':'☀️ Светлая';scheduleDraw();}
-themeBtn.onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
-setTheme(localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
-// init из hash или дефолт
 (function init(){
   let restored=false;
   if(location.hash.length>1){
     try{
       const d=JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1)))));
-      state.mode=d.mode||'cartesian';state.params=d.p||{};state.view=d.v||defaultView();
-      (d.fn||[]).forEach(([a,b2,c])=>{const f=makeFn(a,c);f.expr2=b2||'sin(t)';state.functions.push(f);});
-      restored=true;
-      document.querySelectorAll('.modes button').forEach(x=>x.classList.toggle('active',x.dataset.mode===state.mode));
-      document.getElementById('tRangeRow').style.display=state.mode==='parametric'?'flex':'none';
-      document.getElementById('thetaRow').style.display=state.mode==='polar'?'flex':'none';
+      if(d.mode&&DEMOS[d.mode]){
+        state.mode=d.mode;state.params=d.p||{};state.view=d.v||defaultView();
+        state.functions=[];
+        (d.fn||[]).forEach(([a,b2,c])=>{const f=makeFn(a,c,b2);state.functions.push(f);});
+        restored=true;
+      }
     }catch(e){}
   }
-  if(!restored){ state.functions.push(Object.assign(makeFn('sin(x)/x'),{})); }
-  renderFnList();refreshParams();
+  if(!restored){state.mode='cartesian';loadDemo('cartesian');}
+  syncChrome();renderFnList();refreshParams();
   window.addEventListener('resize',resize);
-  resize();
+  resize();flashOSD(OSD_TXT[state.mode]);playAnim();
 })();
 })();
 </script>
